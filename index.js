@@ -24,13 +24,16 @@ app.get("/api/persons", (req, res) => {
   personModel.fetchAll().then(people => res.json(people))
 });
 
-app.get("/api/persons/:id", (req, res) => {
+app.get("/api/persons/:id", (req, res, next) => {
   const id = req.params.id;
-  personModel.findOne(id).then(person => {
-    if (person)
-      res.json(person)
-    else res.status(404).json({ error: "person not found." });
-  });
+  personModel
+    .fetchOne(id)
+    .then(person => {
+      if (person)
+        res.json(person)
+      else res.status(404).json({ error: "person not found." });
+    })
+    .catch(err => next(err));
 });
 
 app.post("/api/persons", (req, res) => {
@@ -47,10 +50,12 @@ app.post("/api/persons", (req, res) => {
   // if (personWithNameExists)
   //   return res.status(400).json({ error: "name must be unique" });
 
-  personModel.createPerson(person.name, person.number).then(newPerson => res.status(201).json(newPerson));
+  personModel
+    .createPerson(person.name, person.number)
+    .then(newPerson => res.status(201).json(newPerson));
 });
 
-app.put("/api/persons/:id", (req, res) => {
+app.put("/api/persons/:id", (req, res, next) => {
   const person = req.body;
 
   if (!person.id)
@@ -60,12 +65,18 @@ app.put("/api/persons/:id", (req, res) => {
   if (!person.number)
     return res.status(400).json({ error: "number cannot be empty." });
   
-  personModel.updatePerson(person).then(newPerson => res.status(201).json(newPerson));
+  personModel
+    .updatePerson(person)
+    .then(newPerson => res.status(201).json(newPerson))
+    .catch(err => next(err));
 })
 
-app.delete("/api/persons/:id", (req, res) => {
+app.delete("/api/persons/:id", (req, res, next) => {
   const id = req.params.id;
-  personModel.deletePerson(id).then(() => res.status(204).end());
+  personModel
+    .deletePerson(id)
+    .then(() => res.status(204).end())
+    .catch(err => next(err));
 });
 
 app.get("/info", (req, res) => {
@@ -79,6 +90,21 @@ app.get("/info", (req, res) => {
     res.send(html(people.length))
   )
 });
+
+const errorHandler = (error, req, res, next) => {
+  console.log(error.message);
+  
+  switch(error.name) {
+    case "CastError":
+      res.status(400).json({message: "id not in the right format."});
+    default:
+      res.status(500).end()
+  }
+  
+  next(error)
+}
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
