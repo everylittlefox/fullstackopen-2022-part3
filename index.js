@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.static("build"));
 app.use(express.json());
 
-morgan.token("post-body", (req, res) => {
+morgan.token("post-body", (req) => {
   if (req.method === "POST") {
     return JSON.stringify(req.body);
   }
@@ -36,37 +36,21 @@ app.get("/api/persons/:id", (req, res, next) => {
     .catch(err => next(err));
 });
 
-app.post("/api/persons", (req, res) => {
+app.post("/api/persons", (req, res, next) => {
   const person = req.body;
-
-  if (!person.name)
-    return res.status(400).json({ error: "name cannot be empty." });
-  if (!person.number)
-    return res.status(400).json({ error: "number cannot be empty." });
-
-  // const personWithNameExists = persons.some(
-  //   (p) => p.name.toLowerCase() === person.name.toLowerCase()
-  // );
-  // if (personWithNameExists)
-  //   return res.status(400).json({ error: "name must be unique" });
 
   personModel
     .createPerson(person.name, person.number)
-    .then(newPerson => res.status(201).json(newPerson));
+    .then(newPerson => res.status(201).json(newPerson))
+    .catch(err => next(err));
 });
 
 app.put("/api/persons/:id", (req, res, next) => {
   const person = req.body;
-
-  if (!person.id)
-    return res.status(400).json({ error: "no id provided." });
-  if (!person.name)
-    return res.status(400).json({ error: "name cannot be empty." });
-  if (!person.number)
-    return res.status(400).json({ error: "number cannot be empty." });
+  const id = req.params.id;
   
   personModel
-    .updatePerson(person)
+    .updatePerson(id, person)
     .then(newPerson => res.status(201).json(newPerson))
     .catch(err => next(err));
 })
@@ -96,12 +80,14 @@ const errorHandler = (error, req, res, next) => {
   
   switch(error.name) {
     case "CastError":
-      res.status(400).json({message: "id not in the right format."});
+      return res.status(400).json({message: "id not in the right format."});
+    case "ValidationError":
+      return res.status(400).json({ error: error.message });
+    case "PersonAlreadyExistsError":
+      return res.status(400).json({ error: error.message });
     default:
-      res.status(500).end()
+      next(error)
   }
-  
-  next(error)
 }
 
 app.use(errorHandler)
