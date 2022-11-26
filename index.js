@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
@@ -48,7 +49,7 @@ app.post("/api/persons", (req, res, next) => {
 app.put("/api/persons/:id", (req, res, next) => {
   const person = req.body;
   const id = req.params.id;
-  
+
   personModel
     .updatePerson(id, person)
     .then(newPerson => res.status(201).json(newPerson))
@@ -64,12 +65,12 @@ app.delete("/api/persons/:id", (req, res, next) => {
 });
 
 app.get("/info", (req, res) => {
-  const html = (numPersons) => 
+  const html = (numPersons) =>
     `<div>
       <p>Phonebook has info for ${numPersons} people.</p>
       <p>${new Date().toUTCString()}</p>
     </div>`;
-  
+
   personModel.fetchAll().then(people =>
     res.send(html(people.length))
   )
@@ -77,7 +78,7 @@ app.get("/info", (req, res) => {
 
 const errorHandler = (error, req, res, next) => {
   console.log(error.message);
-  
+
   switch(error.name) {
     case "CastError":
       return res.status(400).json({message: "id not in the right format."});
